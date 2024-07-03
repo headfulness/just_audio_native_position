@@ -493,6 +493,12 @@ class AudioPlayer {
         : List.generate(sequence!.length, (i) => i);
   }
 
+  Future<Duration> getCurrentPosition() async {
+    var platform = await _platform;
+    int position = await platform.getCurrentPosition();
+    return Duration(milliseconds: position);
+  }
+
   List<int>? get _effectiveIndicesInv {
     if (shuffleIndices == null || sequence == null) return null;
     return shuffleModeEnabled

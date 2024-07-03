@@ -172,7 +172,12 @@
             result(@{});
         } else if ([@"setAndroidAudioAttributes" isEqualToString:call.method]) {
             result(@{});
-        } else {
+        } 
+        else if ([@"getCurrentPosition" isEqualToString:call.method]) {
+            int currentPosition = self.getCurrentPosition;
+            result(@(currentPosition));
+        }
+        else {
             result(FlutterMethodNotImplemented);
         }
     } @catch (NSException *exception) {

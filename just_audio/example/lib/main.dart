@@ -202,6 +202,14 @@ class ControlButtons extends StatelessWidget {
             },
           ),
         ),
+        // Button to test getPosition
+        IconButton(
+          icon: const Icon(Icons.star),
+          onPressed: () async {
+            var position = await player.getCurrentPosition();
+            print(position);
+          },
+        ),
       ],
     );
   }

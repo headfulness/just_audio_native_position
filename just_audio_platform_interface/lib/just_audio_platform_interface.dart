@@ -217,6 +217,10 @@ abstract class AudioPlayerPlatform {
         "androidLoudnessEnhancerSetTargetGain() has not been implemented.");
   }
 
+  Future<int> getCurrentPosition() {
+    throw UnimplementedError("getCurrentPosition() has not been implemented.");
+  }
+
   /// Gets the Android equalizer parameters.
   Future<AndroidEqualizerGetParametersResponse> androidEqualizerGetParameters(
       AndroidEqualizerGetParametersRequest request) {

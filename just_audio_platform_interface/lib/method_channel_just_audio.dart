@@ -231,4 +231,9 @@ class MethodChannelAudioPlayer extends AudioPlayerPlatform {
         (await _channel.invokeMethod<Map<dynamic, dynamic>>(
             'androidEqualizerBandSetGain', request.toMap()))!);
   }
+
+  @override
+  Future<int> getCurrentPosition() async {
+    return await _channel.invokeMethod<int>('getCurrentPosition') ?? 0;
+  }
 }

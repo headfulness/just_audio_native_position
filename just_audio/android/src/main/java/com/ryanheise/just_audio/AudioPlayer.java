@@ -507,6 +507,9 @@ public class AudioPlayer implements MethodCallHandler, Player.Listener, Metadata
                 equalizerBandSetGain(call.argument("bandIndex"), call.argument("gain"));
                 result.success(new HashMap<String, Object>());
                 break;
+            case "getCurrentPosition":
+                result.success(getCurrentPosition());
+                break;
             default:
                 result.notImplemented();
                 break;
