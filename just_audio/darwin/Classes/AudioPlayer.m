@@ -174,8 +174,8 @@
             result(@{});
         } 
         else if ([@"getCurrentPosition" isEqualToString:call.method]) {
-            int currentPosition = self.getCurrentPosition;
-            result(@(currentPosition));
+            int position = [self getCurrentPositionCurrentTime];
+            result(@(position));
         }
         else {
             result(FlutterMethodNotImplemented);
@@ -342,6 +342,11 @@
             @"duration": @([self getDurationMicroseconds]),
             @"currentIndex": @(_index),
     }];
+}
+
+- (int)getCurrentPositionCurrentTime {
+    CMTime position = _player.currentTime;
+    return (int)(1000 * CMTimeGetSeconds(position));
 }
 
 - (int)getCurrentPosition {

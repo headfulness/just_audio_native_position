@@ -3651,6 +3651,11 @@ class _IdleAudioPlayer extends AudioPlayerPlatform {
   }
 
   @override
+  Future<int> getCurrentPosition() async {
+    return 0;
+  }
+
+  @override
   Future<SetCanUseNetworkResourcesForLiveStreamingWhilePausedResponse>
       setCanUseNetworkResourcesForLiveStreamingWhilePaused(
           SetCanUseNetworkResourcesForLiveStreamingWhilePausedRequest
