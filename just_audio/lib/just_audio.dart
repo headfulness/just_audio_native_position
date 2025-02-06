@@ -97,6 +97,11 @@ class AudioPlayer {
   /// subscribe to the new platform's events.
   StreamSubscription<PlayerDataMessage>? _playerDataSubscription;
 
+  StreamSubscription<AndroidAudioAttributes>?
+      _androidAudioAttributesSubscription;
+  StreamSubscription<void>? _becomingNoisyEventSubscription;
+  StreamSubscription<AudioInterruptionEvent>? _interruptionEventSubscription;
+
   final String _id;
   final _proxy = _ProxyHttpServer();
   AudioSource? _audioSource;
@@ -139,6 +144,7 @@ class AudioPlayer {
   bool _platformLoading = false;
   AndroidAudioAttributes? _androidAudioAttributes;
   WebCrossOrigin? _webCrossOrigin;
+  String _webSinkId = '';
   final bool _androidApplyAudioAttributes;
   final bool _handleAudioSessionActivation;
 
@@ -285,7 +291,7 @@ class AudioPlayer {
     // Respond to changes to AndroidAudioAttributes configuration.
     if (androidApplyAudioAttributes && _isAndroid()) {
       AudioSession.instance.then((audioSession) {
-        audioSession.configurationStream
+        _androidAudioAttributesSubscription = audioSession.configurationStream
             .map((conf) => conf.androidAudioAttributes)
             .where((attributes) => attributes != null)
             .cast<AndroidAudioAttributes>()
@@ -295,10 +301,12 @@ class AudioPlayer {
     }
     if (handleInterruptions) {
       AudioSession.instance.then((session) {
-        session.becomingNoisyEventStream.listen((_) {
+        _becomingNoisyEventSubscription =
+            session.becomingNoisyEventStream.listen((_) {
           pause();
         });
-        session.interruptionEventStream.listen((event) {
+        _interruptionEventSubscription =
+            session.interruptionEventStream.listen((event) {
           if (event.begin) {
             switch (event.type) {
               case AudioInterruptionType.duck:
@@ -575,6 +583,13 @@ class AudioPlayer {
   /// false.
   bool get allowsExternalPlayback => _allowsExternalPlayback;
 
+  /// The `crossorigin` attribute set the `<audio>` element backing this player
+  /// instance on web.
+  WebCrossOrigin? get webCrossOrigin => _webCrossOrigin;
+
+  /// The current sink ID of the `<audio>` element backing this instance on web.
+  String get webSinkId => _webSinkId;
+
   /// The current position of the player.
   Duration get position => _getPositionFor(_playbackEvent);
 
@@ -643,18 +658,14 @@ class AudioPlayer {
     StreamSubscription<Duration?>? durationSubscription;
     StreamSubscription<PlaybackEvent>? playbackEventSubscription;
     void yieldPosition(Timer timer) {
-      if (controller.isClosed) {
+      if (controller.isClosed || _durationSubject.isClosed) {
         timer.cancel();
         durationSubscription?.cancel();
         playbackEventSubscription?.cancel();
-        return;
-      }
-      if (_durationSubject.isClosed) {
-        timer.cancel();
-        durationSubscription?.cancel();
-        playbackEventSubscription?.cancel();
-        // This will in turn close _positionSubject.
-        controller.close();
+        if (!controller.isClosed) {
+          // This will in turn close _positionSubject.
+          controller.close();
+        }
         return;
       }
       if (playing) {
@@ -1233,6 +1244,16 @@ class AudioPlayer {
     _webCrossOrigin = webCrossOrigin;
   }
 
+  /// Sets a specific device output id on Web.
+  Future<void> setWebSinkId(String webSinkId) async {
+    if (_disposed) return;
+    if (!kIsWeb && !_isUnitTest()) return;
+
+    await (await _platform)
+        .setWebSinkId(SetWebSinkIdRequest(sinkId: webSinkId));
+    _webSinkId = webSinkId;
+  }
+
   /// Release all resources associated with this player. You must invoke this
   /// after you are done with the player.
   Future<void> dispose() async {
@@ -1261,6 +1282,9 @@ class AudioPlayer {
     await _pitchSubject.close();
     await _sequenceSubject.close();
     await _shuffleIndicesSubject.close();
+    await _androidAudioAttributesSubscription?.cancel();
+    await _becomingNoisyEventSubscription?.cancel();
+    await _interruptionEventSubscription?.cancel();
   }
 
   /// Switch to using the native platform when [active] is `true` and using the
@@ -1483,10 +1507,17 @@ class AudioPlayer {
                 ? ShuffleModeMessage.all
                 : ShuffleModeMessage.none));
         if (checkInterruption()) return platform;
-        if (kIsWeb && _webCrossOrigin != null) {
-          await platform.setWebCrossOrigin(SetWebCrossOriginRequest(
-            crossOrigin: WebCrossOriginMessage.values[_webCrossOrigin!.index],
-          ));
+        if (kIsWeb) {
+          if (_webCrossOrigin != null) {
+            await platform.setWebCrossOrigin(SetWebCrossOriginRequest(
+              crossOrigin: WebCrossOriginMessage.values[_webCrossOrigin!.index],
+            ));
+          }
+          if (_webSinkId != '') {
+            await platform.setWebSinkId(SetWebSinkIdRequest(
+              sinkId: _webSinkId,
+            ));
+          }
         }
         for (var audioEffect in _audioPipeline._audioEffects) {
           await audioEffect._activate(platform);
@@ -2529,9 +2560,9 @@ class ConcatenatingAudioSource extends AudioSource {
 
   /// Creates a [ConcatenatingAudioSorce] with the specified [children]. If
   /// [useLazyPreparation] is `true`, children will be loaded/buffered as late
-  /// as possible before needed for playback (currently supported on Android
-  /// only). When [AudioPlayer.shuffleModeEnabled] is `true`, [shuffleOrder]
-  /// will be used to determine the playback order (defaulting to
+  /// as possible before needed for playback (currently supported on Android,
+  /// iOS, MacOS). When [AudioPlayer.shuffleModeEnabled] is `true`,
+  /// [shuffleOrder] will be used to determine the playback order (defaulting to
   /// [DefaultShuffleOrder]).
   ConcatenatingAudioSource({
     required this.children,
@@ -3644,6 +3675,11 @@ class _IdleAudioPlayer extends AudioPlayerPlatform {
   }
 
   @override
+  Future<SetWebSinkIdResponse> setWebSinkId(SetWebSinkIdRequest request) async {
+    return SetWebSinkIdResponse();
+  }
+
+  @override
   Future<SetAutomaticallyWaitsToMinimizeStallingResponse>
       setAutomaticallyWaitsToMinimizeStalling(
           SetAutomaticallyWaitsToMinimizeStallingRequest request) async {
@@ -3718,6 +3754,30 @@ class _IdleAudioPlayer extends AudioPlayerPlatform {
       androidLoudnessEnhancerSetTargetGain(
           AndroidLoudnessEnhancerSetTargetGainRequest request) async {
     return AndroidLoudnessEnhancerSetTargetGainResponse();
+  }
+
+  @override
+  Future<AndroidEqualizerBandSetGainResponse> androidEqualizerBandSetGain(
+      AndroidEqualizerBandSetGainRequest request) async {
+    return AndroidEqualizerBandSetGainResponse();
+  }
+
+  @override
+  Future<AndroidEqualizerGetParametersResponse> androidEqualizerGetParameters(
+      AndroidEqualizerGetParametersRequest request) async {
+    return AndroidEqualizerGetParametersResponse(
+      parameters: AndroidEqualizerParametersMessage(
+        minDecibels: 0.0,
+        maxDecibels: 10.0,
+        bands: [],
+      ),
+    );
+  }
+
+  @override
+  Future<SetAllowsExternalPlaybackResponse> setAllowsExternalPlayback(
+      SetAllowsExternalPlaybackRequest request) async {
+    return SetAllowsExternalPlaybackResponse();
   }
 }
 

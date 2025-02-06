@@ -1,8 +1,40 @@
+## 0.9.46
+
+* Fix SwiftPM support on macOS.
+
+## 0.9.45
+
+* Add setWebSinkId for web (@dganzella).
+
+## 0.9.44
+
+* Add support for SwiftPM.
+
+## 0.9.43
+
+* Fix NPE in load on iOS/macOS.
+* Migrate to media3 ExoPlayer 1.4.1 on Android (@hansvdwd and @ryanheise).
+
+## 0.9.42
+
+* Fix dealloc crash on iOS/macOS (@cristian1980).
+* Fix Dart memory leak on dispose (@MinSeungHyun).
+* Bump gradle to 8.5.0.
+
+## 0.9.41
+
+* Fix stop() to cause play() to return on iOS.
+
+## 0.9.40
+
+* Fix JDK 21 compile error.
+
 ## 0.9.39
 
 * Apply preferPreciseDurationAndTiming to files (@canxin121).
 * Add tag parameter to setUrl/setFilePath/setAsset (@mathisfouques).
 * Add tag parameter to setClip (@goviral-ma).
+* Support rxdart 0.28.x.
 
 ## 0.9.38
 
