@@ -297,6 +297,8 @@ class PlaybackEventMessage {
   final IcyMetadataMessage? icyMetadata;
   final int? currentIndex;
   final int? androidAudioSessionId;
+  final int? errorCode;
+  final String? errorMessage;
 
   PlaybackEventMessage({
     required this.processingState,
@@ -307,6 +309,8 @@ class PlaybackEventMessage {
     required this.icyMetadata,
     required this.currentIndex,
     required this.androidAudioSessionId,
+    this.errorCode,
+    this.errorMessage,
   });
 
   static PlaybackEventMessage fromMap(Map<dynamic, dynamic> map) =>
@@ -327,6 +331,8 @@ class PlaybackEventMessage {
                 map['icyMetadata'] as Map<dynamic, dynamic>),
         currentIndex: map['currentIndex'] as int?,
         androidAudioSessionId: map['androidAudioSessionId'] as int?,
+        errorCode: map['errorCode'] as int?,
+        errorMessage: map['errorMessage'] as String?,
       );
 }
 
@@ -411,14 +417,19 @@ class InitRequest {
   final AudioLoadConfigurationMessage? audioLoadConfiguration;
   final List<AudioEffectMessage> androidAudioEffects;
   final List<AudioEffectMessage> darwinAudioEffects;
+
+  final AndroidAudioOffloadPreferencesMessage? androidAudioOffloadPreferences;
   final bool? androidOffloadSchedulingEnabled;
+  final bool useLazyPreparation;
 
   InitRequest({
     required this.id,
     this.audioLoadConfiguration,
     this.androidAudioEffects = const [],
     this.darwinAudioEffects = const [],
+    this.androidAudioOffloadPreferences,
     this.androidOffloadSchedulingEnabled,
+    this.useLazyPreparation = true,
   });
 
   Map<dynamic, dynamic> toMap() => <dynamic, dynamic>{
@@ -430,7 +441,10 @@ class InitRequest {
         'darwinAudioEffects': darwinAudioEffects
             .map((audioEffect) => audioEffect.toMap())
             .toList(),
+        'androidAudioOffloadPreferences':
+            androidAudioOffloadPreferences?.toMap(),
         'androidOffloadSchedulingEnabled': androidOffloadSchedulingEnabled,
+        'useLazyPreparation': useLazyPreparation,
       };
 }
 
@@ -1047,6 +1061,29 @@ class AndroidLivePlaybackSpeedControlMessage {
             targetLiveOffsetIncrementOnRebuffer.inMicroseconds,
         'minPossibleLiveOffsetSmoothingFactor':
             minPossibleLiveOffsetSmoothingFactor,
+      };
+}
+
+/// The loop mode communicated to the platform implementation.
+enum AndroidAudioOffloadModeMessage { disabled, enabled }
+
+/// Information communicated to the platform implementation when setting the
+/// audio offload preferences.
+class AndroidAudioOffloadPreferencesMessage {
+  final AndroidAudioOffloadModeMessage audioOffloadMode;
+  final bool isGaplessSupportRequired;
+  final bool isSpeedChangeSupportRequired;
+
+  AndroidAudioOffloadPreferencesMessage({
+    required this.audioOffloadMode,
+    required this.isGaplessSupportRequired,
+    required this.isSpeedChangeSupportRequired,
+  });
+
+  Map<dynamic, dynamic> toMap() => <dynamic, dynamic>{
+        'audioOffloadMode': audioOffloadMode.index,
+        'isGaplessSupportRequired': isGaplessSupportRequired,
+        'isSpeedChangeSupportRequired': isSpeedChangeSupportRequired,
       };
 }
 
